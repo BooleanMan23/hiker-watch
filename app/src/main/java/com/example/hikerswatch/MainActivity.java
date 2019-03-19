@@ -285,6 +285,7 @@ public class MainActivity extends AppCompatActivity {
 
 //                        int nameIndex = c.getColumnIndex("name");
 //                        int ageIndex = c.getColumnIndex("age");
+                //s
                 int kotaIndex = c.getColumnIndex("kota");
 
                 int cuacaIndex = c.getColumnIndex("cuaca");
