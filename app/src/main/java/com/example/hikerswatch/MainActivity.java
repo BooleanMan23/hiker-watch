@@ -3,11 +3,16 @@ package com.example.hikerswatch;
 import android.Manifest;
 import android.content.Context;
 import android.content.pm.PackageManager;
+import android.database.Cursor;
+import android.database.sqlite.SQLiteDatabase;
+import android.database.sqlite.SQLiteStatement;
 import android.location.Address;
 import android.location.Geocoder;
 import android.location.Location;
 import android.location.LocationListener;
 import android.location.LocationManager;
+import android.net.ConnectivityManager;
+import android.net.NetworkInfo;
 import android.os.AsyncTask;
 import android.os.Build;
 import android.support.annotation.NonNull;
@@ -18,6 +23,7 @@ import android.os.Bundle;
 import android.util.Log;
 import android.view.View;
 import android.widget.TextView;
+import android.widget.Toast;
 
 import org.json.JSONArray;
 import org.json.JSONException;
@@ -39,7 +45,10 @@ public class MainActivity extends AppCompatActivity {
     TextView cityTextView;
     TextView cuacaTextView;
     TextView deskripsiCuacaTextView;
-    String city = "Malang";
+    String city = "";
+    SQLiteDatabase myDatabase ;
+    String cuaca = "";
+    TextView cuacaTerakhirTextView;
 
 
 
@@ -95,11 +104,63 @@ public class MainActivity extends AppCompatActivity {
                 for(int i = 0; i<arr.length();i++){
                     JSONObject jsonPart = arr.getJSONObject(i);
                     String main = jsonPart.getString("main");
+
                     String description = jsonPart.getString("description");
                     Log.i("main", main);
                     Log.i("descripion", description);
                     cuacaTextView.setText("Cuaca : "+ main);
-                    deskripsiCuacaTextView.setText("Deskripsi Cuaca "+String.valueOf(description));
+                    deskripsiCuacaTextView.setText("Deskripsi Cuaca : "+String.valueOf(description));
+                    cuaca = main;
+
+
+                    //database
+                    try {
+
+                        myDatabase.execSQL("CREATE TABLE IF NOT EXISTS cuaca (kota VARCHAR, cuaca VARCHAR)");
+                            String kotaQuery = city;
+                            String cuacaQuery = cuaca;
+
+
+//                        myDatabase.execSQL("INSERT INTO cuaca VALUES ('MALANG', 'HUJAN')");
+
+//
+////
+                        SQLiteStatement stmt = myDatabase.compileStatement("INSERT INTO cuaca (kota, cuaca) VALUES(?,?)");
+                        stmt.bindString(1, kotaQuery);
+                        stmt.bindString(2, cuacaQuery);
+                        stmt.execute();
+
+//
+////
+//                        String wolo = "INSERT INTO cuaca2 (kota, cuaca) VALUES (" +kotaQuery + "," + cuacaQuery +")";
+//                        Log.i("query", wolo);
+
+
+
+
+                        Cursor c = myDatabase.rawQuery("SELECT  * FROM cuaca", null);
+
+//                        int nameIndex = c.getColumnIndex("name");
+//                        int ageIndex = c.getColumnIndex("age");
+                          int kotaIndex = c.getColumnIndex("kota");
+
+                          int cuacaIndex = c.getColumnIndex("cuaca");
+
+                        c.moveToLast();
+
+                        while (c!= null){
+                            Log.i("kota", c.getString(kotaIndex));
+                            Log.i("cuaca", c.getString(cuacaIndex));
+                            String simpanKota = c.getString(kotaIndex);
+                            String simpanCuaca = c.getString(cuacaIndex);
+
+                            c.moveToNext();
+                            cuacaTerakhirTextView.setText("PENGLIHATAN TERAKHIR : Kota : " + simpanKota + ", Cuaca : "+simpanCuaca);
+                        }
+                    }
+                    catch (Exception e){
+                        e.printStackTrace();
+                    }
 
 
                 }
@@ -135,12 +196,14 @@ public class MainActivity extends AppCompatActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
-
+        cuacaTextView = (TextView) findViewById(R.id.cuacaTextView);
         lattitudeTextView = (TextView) findViewById(R.id.lattitudeTextView);
         longitudeTextView = (TextView) findViewById(R.id.longitudeTextView);
         cityTextView = (TextView) findViewById(R.id.cityTextView);
         cuacaTextView = (TextView) findViewById(R.id.cuacaTextView);
         deskripsiCuacaTextView = (TextView) findViewById(R.id.deskripsiCuacaTextView);
+        myDatabase = this.openOrCreateDatabase("Users", MODE_PRIVATE, null);
+        cuacaTerakhirTextView = (TextView) findViewById(R.id.cuacaTerakhirTextView);
 
         locationManager = (LocationManager) this.getSystemService(Context.LOCATION_SERVICE);
         //mendengar bila ada perubahan lokasi
@@ -161,6 +224,9 @@ public class MainActivity extends AppCompatActivity {
                         Log.i("Place Info", listAddress.get(0).getLocality());
                         cityTextView.setText("Kota : "+String.valueOf(listAddress.get(0).getLocality()));
                         city = String.valueOf(listAddress.get(0).getLocality());
+                        if(city.equals("Kecamatan Lowokwaru")){
+                            city = "Malang";
+                        }
                     }
                 } catch (IOException e) {
                     e.printStackTrace();
@@ -211,13 +277,61 @@ public class MainActivity extends AppCompatActivity {
     }
 
     public  void getCuaca(View view){
-        DownloadTask task = new DownloadTask();
-        //api key
-        //545ca74824f667a6e84b845f47938c27
-        String link = "http://api.openweathermap.org/data/2.5/weather?q="+city+"&APPID=545ca74824f667a6e84b845f47938c27";
-        Log.i("kota", city);
-        Log.i("link", link);
-        task.execute(link);
 
+        if(isConnected()== false){
+            try {
+                Toast.makeText(getApplicationContext(),"Tidak ada Internet", Toast.LENGTH_SHORT).show();
+                Cursor c = myDatabase.rawQuery("SELECT  * FROM cuaca", null);
+
+//                        int nameIndex = c.getColumnIndex("name");
+//                        int ageIndex = c.getColumnIndex("age");
+                int kotaIndex = c.getColumnIndex("kota");
+
+                int cuacaIndex = c.getColumnIndex("cuaca");
+
+                c.moveToLast();
+
+                while (c!= null){
+                    Log.i("kota", c.getString(kotaIndex));
+                    Log.i("cuaca", c.getString(cuacaIndex));
+                    String simpanKota = c.getString(kotaIndex);
+                    String simpanCuaca = c.getString(cuacaIndex);
+
+                    c.moveToNext();
+                    cuacaTerakhirTextView.setText("PENGLIHATAN TERAKHIR : Kota : " + simpanKota + ", Cuaca : "+simpanCuaca);
+                    deskripsiCuacaTextView.setText("Deskripsi Cuaca : ");
+                    cuacaTextView.setText("Cuaca : ");
+                }
+            }
+            catch (Exception e){
+                e.printStackTrace();
+            }
+
+
+        }
+        else{
+            Toast.makeText(getApplicationContext(),"Terdapat  Internet", Toast.LENGTH_SHORT).show();
+            Log.i("internetStatuqs", "ada internet");
+            DownloadTask task = new DownloadTask();
+            //api key
+            //545ca74824f667a6e84b845f47938c27
+            String link = "http://api.openweathermap.org/data/2.5/weather?q="+city+"&APPID=545ca74824f667a6e84b845f47938c27";
+            Log.i("kota", city);
+            Log.i("link", link);
+            task.execute(link);
+        }
+
+
+
+
+
+
+
+    }
+    public boolean isConnected(){
+        ConnectivityManager connectivityManager = (ConnectivityManager) getSystemService(Context.CONNECTIVITY_SERVICE);
+        NetworkInfo networkInfo = connectivityManager.getActiveNetworkInfo();
+
+        return networkInfo!=null&&networkInfo.isConnected();
     }
 }
